@@ -1,0 +1,56 @@
+resources:
+  repositories: 
+    - repository: dotnet_app
+      type: git
+      name: MyfirstProject/dotnet_app
+      ref: main
+      trigger:
+        branches:
+          include:
+            - main
+
+variables:
+  bkstrgrg: "tfstateRG02"
+  bkstrg: "tfstate021358608744"
+  bkcontainer: "tfstate"
+  bkstrgkey: "terraform.tfstate"
+
+stages:
+
+- stage: destroy
+  jobs:
+  - deployment: deploy_terraform
+    continueOnError: false
+    environment: 'dev'
+    strategy:
+     runOnce:
+      deploy:
+        steps:
+          - checkout: self
+          - task: TerraformInstaller@0
+            displayName: 'install'
+            inputs:
+              terraformVersion: 'latest'
+          - task: TerraformTaskV3@3
+            displayName: 'init'
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              backendServiceArm: 'DevTestServiceConnection'
+              backendAzureRmResourceGroupName: '$(bkstrgrg)'
+              backendAzureRmStorageAccountName: '$(bkstrg)'
+              backendAzureRmContainerName: '$(bkcontainer)'
+              backendAzureRmKey: '$(bkstrgkey)'
+
+          - task: TerraformTaskV3@3
+            displayName: 'plan'
+            inputs:
+              provider: 'azurerm'
+              command: 'plan'
+              environmentServiceNameAzureRM: 'DevTestServiceConnection'
+          - task: TerraformTaskV3@3
+            displayName: 'destroy'
+            inputs:
+              provider: 'azurerm'
+              command: 'destroy'
+              environmentServiceNameAzureRM: 'DevTestServiceConnection'
